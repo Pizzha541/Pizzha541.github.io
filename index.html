@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Localizador Pokemon</title>
+    <link rel="preconnect" href="https://raw.githubusercontent.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Pokedex de equipo</p>
+          <h1>Localizador Pokemon</h1>
+          <p class="intro">
+            Filtra por movimientos, habilidad, tipo, estadisticas y debilidades
+            para encontrar Pokemon que encajen con tu equipo.
+          </p>
+        </div>
+        <div class="hero-panel" aria-label="Resumen de filtros activos">
+          <div class="pokeball-mark" aria-hidden="true"></div>
+          <span id="summary-count">0</span>
+          <small>coincidencias</small>
+        </div>
+      </section>
+
+      <section class="search-layout">
+        <form id="finder-form" class="filters">
+          <div class="filter-group">
+            <div class="group-header">
+              <h2>Movimientos</h2>
+              <button class="icon-button" type="button" id="clear-moves" title="Limpiar movimientos">
+                x
+              </button>
+            </div>
+            <div class="move-grid">
+              <label>
+                Ataque 1
+                <input list="move-options" name="move" placeholder="ej: thunderbolt" autocomplete="off" />
+              </label>
+              <label>
+                Ataque 2
+                <input list="move-options" name="move" placeholder="opcional" autocomplete="off" />
+              </label>
+              <label>
+                Ataque 3
+                <input list="move-options" name="move" placeholder="opcional" autocomplete="off" />
+              </label>
+              <label>
+                Ataque 4
+                <input list="move-options" name="move" placeholder="opcional" autocomplete="off" />
+              </label>
+            </div>
+          </div>
+
+          <div class="filter-row">
+            <label>
+              Habilidad
+              <input list="ability-options" id="ability-input" placeholder="ej: intimidate" autocomplete="off" />
+            </label>
+            <label>
+              Tipo
+              <select id="type-filter">
+                <option value="">Cualquier tipo</option>
+              </select>
+            </label>
+            <label>
+              Debil a
+              <select id="weakness-filter">
+                <option value="">Cualquier debilidad</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="filter-group">
+            <div class="group-header">
+              <h2>Stats minimos</h2>
+              <button class="icon-button" type="button" id="clear-stats" title="Limpiar stats">
+                x
+              </button>
+            </div>
+            <div class="stats-grid">
+              <label>HP <input type="number" min="0" max="255" id="stat-hp" placeholder="0" /></label>
+              <label>Ataque <input type="number" min="0" max="255" id="stat-attack" placeholder="0" /></label>
+              <label>Defensa <input type="number" min="0" max="255" id="stat-defense" placeholder="0" /></label>
+              <label>At. Esp. <input type="number" min="0" max="255" id="stat-special-attack" placeholder="0" /></label>
+              <label>Def. Esp. <input type="number" min="0" max="255" id="stat-special-defense" placeholder="0" /></label>
+              <label>Velocidad <input type="number" min="0" max="255" id="stat-speed" placeholder="0" /></label>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary-button" type="submit">Buscar</button>
+            <button class="secondary-button" type="reset">Reiniciar</button>
+          </div>
+        </form>
+
+        <section class="results-area">
+          <div class="status-bar">
+            <div>
+              <strong id="status-title">Listo para buscar</strong>
+              <p id="status-text">Escribe uno o varios filtros y pulsa buscar.</p>
+            </div>
+            <div class="loader" id="loader" hidden></div>
+          </div>
+          <div id="results" class="results-grid"></div>
+        </section>
+      </section>
+    </main>
+
+    <datalist id="move-options"></datalist>
+    <datalist id="ability-options"></datalist>
+    <script src="fallback-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
