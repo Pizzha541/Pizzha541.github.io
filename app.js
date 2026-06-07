@@ -19,10 +19,26 @@ const loader = document.querySelector("#loader");
 const summaryCount = document.querySelector("#summary-count");
 const typeFilter = document.querySelector("#type-filter");
 const weaknessFilter = document.querySelector("#weakness-filter");
+const secretInputs = document.querySelectorAll("input");
 
 let allPokemonNames = [];
 let typeRelations = {};
 let usingLocalData = true;
+let konamiProgress = 0;
+let secretChain = [];
+const triggeredSecrets = new Set();
+const KONAMI_CODE = [
+  "ArrowUp",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowLeft",
+  "ArrowRight",
+  "b",
+  "a",
+];
 
 init();
 
@@ -82,6 +98,20 @@ document.querySelector("#clear-stats").addEventListener("click", () => {
   document.querySelectorAll(".stats-grid input").forEach((input) => {
     input.value = "";
   });
+});
+
+secretInputs.forEach((input) => {
+  input.addEventListener("input", () => checkSecretPhrase(input.value));
+});
+
+window.addEventListener("keydown", (event) => {
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  konamiProgress = key === KONAMI_CODE[konamiProgress] ? konamiProgress + 1 : 0;
+
+  if (konamiProgress === KONAMI_CODE.length) {
+    konamiProgress = 0;
+    activateSecret("konami");
+  }
 });
 
 async function runSearch() {
@@ -465,6 +495,177 @@ function setLoading(isLoading, title, text) {
 
 function renderEmpty(message) {
   results.innerHTML = `<div class="empty-state">${message}</div>`;
+}
+
+function checkSecretPhrase(value) {
+  const phrase = normalizeName(value);
+  const secretMap = {
+    obsidian: "obsidian",
+    "obsidian-studios": "obsidian-studios",
+    pizzha: "pizzha",
+    create: "create",
+    "la-noche-eterna": "la-noche-eterna",
+    "un-dia-mas": "la-noche-eterna",
+    aero: "aero",
+    aerocraft: "aero",
+    zeus: "zeus",
+    "desafio-obsidian": "desafio-obsidian",
+    agmez: "agmez",
+    omnitrix: "agmez",
+    shiny: "shiny",
+    missingno: "missingno",
+    masterball: "masterball",
+  };
+
+  if (secretMap[phrase]) {
+    activateSecret(secretMap[phrase]);
+  }
+}
+
+function activateSecret(secret) {
+  if (!["obsidian-studios", "pizzha", "zeus"].includes(secret) && triggeredSecrets.has(secret)) {
+    return;
+  }
+
+  triggeredSecrets.add(secret);
+  updateSecretChain(secret);
+
+  const actions = {
+    konami: () => {
+      document.body.classList.add("obsidian-takeover");
+      showToast("Obsidian Studios ha tomado el control de la Pokedex.", "Konami Code");
+      window.setTimeout(() => document.body.classList.remove("obsidian-takeover"), 6500);
+    },
+    obsidian: () => {
+      showToast("Fundado por Pizzha. Donde las ideas se convierten en proyectos imposibles.", "Obsidian Studios");
+      renderSecretPokemon();
+    },
+    "obsidian-studios": () => {
+      showToast("Pokedex experimental de Obsidian Studios activada.", "Obsidian Dex");
+      document.body.classList.add("obsidian-takeover");
+      window.setTimeout(() => document.body.classList.remove("obsidian-takeover"), 6500);
+    },
+    pizzha: () => {
+      const lines = [
+        "Pokemon favorito: cualquiera que sobreviva al primer gimnasio.",
+        "Error 404: El ingeniero esta ocupado usando Create.",
+      ];
+      showToast(lines[Math.floor(Math.random() * lines.length)], "Pizzha");
+    },
+    create: () => {
+      showToast("Demasiados engranajes detectados.", "Create");
+      temporaryBodyClass("create-spin", 5200);
+    },
+    "la-noche-eterna": () => {
+      showToast("Los zombis estan mas cerca de lo que crees.", "Un Dia Mas");
+      temporaryBodyClass("eternal-night", 8000);
+    },
+    aero: () => {
+      showToast("Proxima parada: una fabrica de Create innecesariamente grande.", "AeroCraft");
+      temporaryBodyClass("train-pass", 4200);
+    },
+    zeus: () => {
+      showToast("Nivel de energia: Infinito.", "Zeus");
+      temporaryBodyClass("zeus-charge", 4500);
+    },
+    "desafio-obsidian": () => {
+      showQuizToast();
+    },
+    agmez: () => {
+      showToast("Todos los Pokemon reciben temporalmente un Omnitrix.", "Agmez");
+      temporaryBodyClass("omnitrix-mode", 7000);
+    },
+    shiny: () => {
+      showToast("Probabilidad aumentada... o eso quieres creer.", "Shiny Luck");
+      temporaryBodyClass("shiny-mode", 7000);
+    },
+    missingno: () => {
+      showToast("Algo salio mal en la Pokedex... o quiza demasiado bien.", "MissingNo");
+      renderMissingNo();
+    },
+    masterball: () => {
+      showToast("Captura garantizada: se muestran todos los Pokemon locales.", "Master Ball");
+      renderResults(window.LOCAL_POKEMON, { moves: [] });
+      summaryCount.textContent = String(window.LOCAL_POKEMON.length);
+    },
+  };
+
+  actions[secret]?.();
+}
+
+function updateSecretChain(secret) {
+  if (!["obsidian-studios", "pizzha", "zeus"].includes(secret)) return;
+
+  secretChain.push(secret);
+  secretChain = secretChain.slice(-3);
+
+  if (secretChain.join(">") === "obsidian-studios>pizzha>zeus") {
+    showToast("Veterano de Obsidian Studios: conoces demasiado lore para ser una persona normal.", "Logro desbloqueado");
+    temporaryBodyClass("achievement-unlocked", 7000);
+    secretChain = [];
+  }
+}
+
+function showToast(message, title = "Secreto desbloqueado") {
+  let toast = document.querySelector(".secret-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "secret-toast";
+    document.body.append(toast);
+  }
+
+  toast.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+  toast.classList.add("show");
+  window.clearTimeout(showToast.timeout);
+  showToast.timeout = window.setTimeout(() => toast.classList.remove("show"), 5200);
+}
+
+function showQuizToast() {
+  showToast("Pregunta: quien fundo Obsidian Studios? Respuesta correcta: Pizzha.", "UliQuiz");
+}
+
+function temporaryBodyClass(className, duration) {
+  document.body.classList.add(className);
+  window.setTimeout(() => document.body.classList.remove(className), duration);
+}
+
+function renderSecretPokemon() {
+  const secret = window.LOCAL_POKEMON.filter((pokemon) =>
+    pokemon.types.some((entry) => ["rock", "dark"].includes(entry.type.name)),
+  );
+  const chosen = secret[Math.floor(Math.random() * secret.length)] || window.LOCAL_POKEMON[0];
+  renderResults([chosen], { moves: [] });
+  summaryCount.textContent = "1";
+  setLoading(false, "Pokemon de Obsidian encontrado", "Tipo Roca/Siniestro detectado en el laboratorio.");
+}
+
+function renderMissingNo() {
+  results.innerHTML = `
+    <article class="pokemon-card missingno-card">
+      <div class="card-top">
+        <div class="sprite-wrap missingno-sprite">???</div>
+        <div>
+          <div class="dex-number">#0000</div>
+          <h3 class="pokemon-name">missingno</h3>
+          <div class="badge-row">
+            <span class="badge type">glitch</span>
+            <span class="badge type">???</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="info-block">
+          <strong>Estado</strong>
+          <div class="badge-row">
+            <span class="badge match">datos corruptos</span>
+            <span class="badge">stats ???</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+  summaryCount.textContent = "?";
+  setLoading(false, "Error imposible", "La Pokedex encontro algo que no deberia existir.");
 }
 
 function friendlyError(error) {
