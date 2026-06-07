@@ -44,8 +44,13 @@ init();
 
 async function init() {
   setupLocalData();
-  setLoading(false, "Modo local listo", "La busqueda funciona aunque PokeAPI no cargue.");
+  setLoading(false, "Pokedex local lista", "La busqueda usa datos e imagenes locales.");
   renderEmpty("Busca por ejemplo intimidate + earthquake, electric + thunderbolt o dragon-dance.");
+
+  if (window.LOCAL_POKEMON.length > 1000) {
+    usingLocalData = true;
+    return;
+  }
 
   try {
     setLoading(true, "Ampliando Pokedex", "Intentando conectar con PokeAPI para cargar mas Pokemon.");
