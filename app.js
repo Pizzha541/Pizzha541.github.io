@@ -10,6 +10,12 @@ const STAT_LABELS = {
   "special-defense": "Def. Esp.",
   speed: "Velocidad",
 };
+const TRANSLATIONS = window.LOCAL_TRANSLATIONS || {
+  abilities: {},
+  moves: {},
+  pokemon: {},
+  types: {},
+};
 
 const form = document.querySelector("#finder-form");
 const results = document.querySelector("#results");
@@ -17,9 +23,25 @@ const statusTitle = document.querySelector("#status-title");
 const statusText = document.querySelector("#status-text");
 const loader = document.querySelector("#loader");
 const summaryCount = document.querySelector("#summary-count");
+const sourcePill = document.querySelector("#source-pill");
+const gameFilter = document.querySelector("#game-filter");
+const generationFilter = document.querySelector("#generation-filter");
+const regulationFilter = document.querySelector("#regulation-filter");
 const typeFilter = document.querySelector("#type-filter");
 const weaknessFilter = document.querySelector("#weakness-filter");
 const secretInputs = document.querySelectorAll("input");
+const workspaceTabs = document.querySelectorAll(".workspace-tab");
+const GENERATION_RANGES = {
+  "gen-1": [1, 151],
+  "gen-2": [152, 251],
+  "gen-3": [252, 386],
+  "gen-4": [387, 493],
+  "gen-5": [494, 649],
+  "gen-6": [650, 721],
+  "gen-7": [722, 809],
+  "gen-8": [810, 905],
+  "gen-9": [906, 1025],
+};
 
 let allPokemonNames = [];
 let typeRelations = {};
@@ -44,8 +66,9 @@ init();
 
 async function init() {
   setupLocalData();
-  setLoading(false, "Pokedex local lista", "La busqueda usa datos e imagenes locales.");
-  renderEmpty("Busca por ejemplo intimidate + earthquake, electric + thunderbolt o dragon-dance.");
+  setSourceMode("Local completo");
+  setLoading(false, "Pokédex local lista", "No necesita PokeAPI: usa datos, traducciones e imágenes locales.");
+  renderEmpty("Busca por ejemplo intimidacion + terremoto, electrico + rayo o danza dragon.");
 
   if (window.LOCAL_POKEMON.length > 1000) {
     usingLocalData = true;
@@ -53,7 +76,7 @@ async function init() {
   }
 
   try {
-    setLoading(true, "Ampliando Pokedex", "Intentando conectar con PokeAPI para cargar mas Pokemon.");
+    setLoading(true, "Ampliando Pokédex", "Intentando conectar con PokeAPI para cargar más Pokémon.");
     const [pokemonList, moves, abilities, types] = await Promise.all([
       fetchNamedList("pokemon?limit=1302"),
       fetchNamedList("move?limit=10000"),
@@ -66,16 +89,18 @@ async function init() {
       .map((item) => item.name);
 
     usingLocalData = false;
+    setSourceMode("PokeAPI");
     fillDatalist("move-options", moves);
     fillDatalist("ability-options", abilities);
     fillTypeSelects(types);
     await loadTypeRelations(types);
 
-    setLoading(false, "Pokedex completa lista", "PokeAPI cargo bien. Puedes buscar en la lista completa.");
-    renderEmpty("Prueba con ataques como earthquake, surf, flamethrower o calm-mind.");
+    setLoading(false, "Pokédex completa lista", "PokeAPI cargó bien. Puedes buscar en la lista completa.");
+    renderEmpty("Prueba con ataques como terremoto, surf, lanzallamas o paz mental.");
   } catch (error) {
     usingLocalData = true;
     setupLocalData();
+    setSourceMode("Local completo");
     setLoading(false, "Modo local activo", `${friendlyError(error)} Usando una Pokedex local de respaldo.`);
   }
 }
@@ -89,7 +114,7 @@ form.addEventListener("reset", () => {
   window.setTimeout(() => {
     summaryCount.textContent = "0";
     setLoading(false, "Listo para buscar", "Escribe uno o varios filtros y pulsa buscar.");
-    renderEmpty("Prueba con ataques como earthquake, surf, flamethrower o calm-mind.");
+    renderEmpty("Prueba con ataques como terremoto, surf, lanzallamas o paz mental.");
   }, 0);
 });
 
@@ -109,6 +134,10 @@ secretInputs.forEach((input) => {
   input.addEventListener("input", () => checkSecretPhrase(input.value));
 });
 
+workspaceTabs.forEach((tab) => {
+  tab.addEventListener("click", () => switchWorkspace(tab.dataset.window));
+});
+
 window.addEventListener("keydown", (event) => {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   konamiProgress = key === KONAMI_CODE[konamiProgress] ? konamiProgress + 1 : 0;
@@ -122,6 +151,9 @@ window.addEventListener("keydown", (event) => {
 async function runSearch() {
   const filters = readFilters();
   const hasFilters =
+    filters.game ||
+    filters.generation ||
+    filters.regulation ||
     filters.moves.length ||
     filters.ability ||
     filters.type ||
@@ -134,7 +166,7 @@ async function runSearch() {
     return;
   }
 
-  setLoading(true, "Buscando coincidencias", "Cruzando filtros con la Pokedex.");
+  setLoading(true, "Buscando coincidencias", "Cruzando filtros con la Pokédex.");
   results.innerHTML = "";
 
   if (usingLocalData) {
@@ -164,11 +196,12 @@ async function runSearch() {
     }
 
     const namesToCheck = candidates ? [...candidates] : allPokemonNames;
-    setLoading(true, "Revisando detalles", `${namesToCheck.length} Pokemon candidatos encontrados.`);
+    setLoading(true, "Revisando detalles", `${namesToCheck.length} Pokémon candidatos encontrados.`);
 
     const pokemon = await fetchPokemonBatch(namesToCheck);
     const filtered = pokemon
       .filter(Boolean)
+      .filter((entry) => matchesFormat(entry, filters))
       .filter((entry) => matchesStats(entry, filters.stats))
       .filter((entry) => matchesWeakness(entry, filters.weakness))
       .sort((a, b) => a.id - b.id);
@@ -176,7 +209,7 @@ async function runSearch() {
     summaryCount.textContent = String(filtered.length);
 
     if (!filtered.length) {
-      setLoading(false, "Sin coincidencias", "No hay Pokemon que cumplan todos esos filtros.");
+      setLoading(false, "Sin coincidencias", "No hay Pokémon que cumplan todos esos filtros.");
       renderEmpty("Quita un filtro o baja algun stat minimo para ampliar la busqueda.");
       return;
     }
@@ -186,7 +219,7 @@ async function runSearch() {
       `${filtered.length} coincidencia${filtered.length === 1 ? "" : "s"}`,
       filtered.length > MAX_RESULTS
         ? `Mostrando los primeros ${MAX_RESULTS}. Afina filtros para ver menos resultados.`
-        : "Resultados ordenados por numero de Pokedex.",
+        : "Resultados ordenados por número de Pokédex.",
     );
     renderResults(filtered.slice(0, MAX_RESULTS), filters);
   } catch (error) {
@@ -201,6 +234,7 @@ function runLocalSearch(filters, apiError = "") {
     .filter((pokemon) => matchesLocalMoves(pokemon, filters.moves))
     .filter((pokemon) => matchesLocalAbility(pokemon, filters.ability))
     .filter((pokemon) => matchesLocalType(pokemon, filters.type))
+    .filter((pokemon) => matchesFormat(pokemon, filters))
     .filter((pokemon) => matchesStats(pokemon, filters.stats))
     .filter((pokemon) => matchesWeakness(pokemon, filters.weakness))
     .sort((a, b) => a.id - b.id);
@@ -211,25 +245,27 @@ function runLocalSearch(filters, apiError = "") {
     setLoading(
       false,
       "Sin coincidencias locales",
-      apiError || "No hay Pokemon de la base local que cumplan todos esos filtros.",
+      apiError || "No hay Pokémon de la base local que cumplan todos esos filtros.",
     );
-    renderEmpty("Prueba con menos filtros o usa nombres en ingles como intimidate, thunderbolt o dragon-dance.");
+    renderEmpty("Prueba con menos filtros o usa nombres como intimidación, rayo, terremoto o danza dragón.");
     return;
   }
 
   setLoading(
     false,
     `${filtered.length} coincidencia${filtered.length === 1 ? "" : "s"} locales`,
-    apiError
-      ? `${apiError} Mostrando resultados del modo local.`
-      : "Resultados de la Pokedex local de respaldo.",
+    filtered.length > MAX_RESULTS
+      ? `Mostrando los primeros ${MAX_RESULTS}. Afina filtros para ver menos resultados.`
+      : apiError
+        ? `${apiError} Mostrando resultados del modo local.`
+      : "Resultados de la Pokédex local de respaldo.",
   );
-  renderResults(filtered, filters);
+  renderResults(filtered.slice(0, MAX_RESULTS), filters);
 }
 
 function readFilters() {
   const moves = [...document.querySelectorAll('input[name="move"]')]
-    .map((input) => normalizeName(input.value))
+    .map((input) => toApiName(input.value, "moves"))
     .filter(Boolean);
 
   const stats = {};
@@ -239,8 +275,11 @@ function readFilters() {
   });
 
   return {
+    game: gameFilter.value,
+    generation: generationFilter.value,
+    regulation: regulationFilter.value,
     moves: [...new Set(moves)],
-    ability: normalizeName(document.querySelector("#ability-input").value),
+    ability: toApiName(document.querySelector("#ability-input").value, "abilities"),
     type: typeFilter.value,
     weakness: weaknessFilter.value,
     stats,
@@ -257,11 +296,19 @@ function pokemonCard(pokemon, filters) {
     pokemon.sprites.front_default ||
     "";
   const types = pokemon.types.map((slot) => slot.type.name);
-  const abilities = pokemon.abilities.map((slot) => slot.ability.name.replaceAll("-", " "));
+  const abilities = pokemon.abilities.map((slot) => slot.ability.name);
   const weaknesses = calculateWeaknesses(types);
   const requestedMoves = filters.moves.filter((move) =>
     pokemon.moves.some((entry) => entry.move.name === move),
   );
+  const statTotal = pokemon.stats.reduce((total, entry) => total + entry.base_stat, 0);
+  const height = pokemon.height ? `${(pokemon.height / 10).toFixed(1)} m` : "N/D";
+  const weight = pokemon.weight ? `${(pokemon.weight / 10).toFixed(1)} kg` : "N/D";
+  const flags = [
+    pokemon.flags?.legendary ? "Legendario" : "",
+    pokemon.flags?.mythical ? "Mitico" : "",
+    pokemon.flags?.baby ? "Bebe" : "",
+  ].filter(Boolean);
 
   return `
     <article class="pokemon-card">
@@ -271,21 +318,33 @@ function pokemonCard(pokemon, filters) {
         </div>
         <div>
           <div class="dex-number">#${String(pokemon.id).padStart(4, "0")}</div>
-          <h3 class="pokemon-name">${formatName(pokemon.name)}</h3>
+          <h3 class="pokemon-name">${pokemonDisplayName(pokemon)}</h3>
+          ${pokemon.genus ? `<p class="pokemon-genus">${pokemon.genus}</p>` : ""}
           <div class="badge-row">
-            ${types.map((type) => `<span class="badge type">${type}</span>`).join("")}
+            ${types.map((type) => `<span class="badge type">${typeName(type)}</span>`).join("")}
           </div>
         </div>
       </div>
       <div class="card-body">
+        <div class="meta-grid">
+          <span><strong>Altura</strong>${height}</span>
+          <span><strong>Peso</strong>${weight}</span>
+          <span><strong>Total</strong>${statTotal}</span>
+        </div>
+        ${
+          flags.length
+            ? `<div class="badge-row">${flags.map((flag) => `<span class="badge rare">${flag}</span>`).join("")}</div>`
+            : ""
+        }
+        ${pokemon.flavor ? `<p class="flavor-text">${pokemon.flavor}</p>` : ""}
         <div class="info-block">
           <strong>Habilidades</strong>
-          <div class="badge-row">${abilities.map((ability) => `<span class="badge">${ability}</span>`).join("")}</div>
+          <div class="badge-row">${abilities.map((ability) => `<span class="badge">${abilityName(ability)}</span>`).join("")}</div>
         </div>
         ${
           requestedMoves.length
             ? `<div class="info-block"><strong>Ataques encontrados</strong><div class="badge-row">${requestedMoves
-                .map((move) => `<span class="badge match">${move.replaceAll("-", " ")}</span>`)
+                .map((move) => `<span class="badge match">${moveName(move)}</span>`)
                 .join("")}</div></div>`
             : ""
         }
@@ -297,7 +356,7 @@ function pokemonCard(pokemon, filters) {
           <strong>Debilidades</strong>
           <div class="badge-row">${
             weaknesses.length
-              ? weaknesses.map((type) => `<span class="badge">${type}</span>`).join("")
+              ? weaknesses.map((type) => `<span class="badge">${typeName(type)}</span>`).join("")
               : `<span class="badge match">sin debilidad x2</span>`
           }</div>
         </div>
@@ -371,7 +430,11 @@ async function fetchWithTimeout(url) {
 
 function fillDatalist(id, items) {
   const list = document.querySelector(`#${id}`);
-  list.innerHTML = items.map((item) => `<option value="${item.name}"></option>`).join("");
+  const category = id === "move-options" ? "moves" : "abilities";
+  list.innerHTML = items
+    .flatMap((item) => datalistOptions(item.name, category))
+    .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+    .join("");
 }
 
 function fillTypeSelects(types) {
@@ -383,8 +446,8 @@ function fillTypeSelects(types) {
     .sort();
 
   for (const type of realTypes) {
-    typeFilter.insertAdjacentHTML("beforeend", `<option value="${type}">${type}</option>`);
-    weaknessFilter.insertAdjacentHTML("beforeend", `<option value="${type}">${type}</option>`);
+    typeFilter.insertAdjacentHTML("beforeend", `<option value="${type}">${typeName(type)}</option>`);
+    weaknessFilter.insertAdjacentHTML("beforeend", `<option value="${type}">${typeName(type)}</option>`);
   }
 }
 
@@ -460,6 +523,34 @@ function matchesLocalType(pokemon, type) {
   return pokemon.types.some((entry) => entry.type.name === type);
 }
 
+function matchesFormat(pokemon, filters) {
+  const generation = filters.generation || filters.game;
+
+  if (generation && !matchesGeneration(pokemon, generation)) {
+    return false;
+  }
+
+  if (filters.regulation === "national") {
+    return pokemon.id <= 1025;
+  }
+
+  if (filters.regulation === "mainline") {
+    return pokemon.id <= 1025 && !pokemon.name.includes("-");
+  }
+
+  if (filters.regulation === "no-special") {
+    return pokemon.id < 10000;
+  }
+
+  return true;
+}
+
+function matchesGeneration(pokemon, generation) {
+  const range = GENERATION_RANGES[generation];
+  if (!range) return true;
+  return pokemon.id >= range[0] && pokemon.id <= range[1];
+}
+
 function calculateWeaknesses(defendingTypes) {
   return Object.keys(typeRelations)
     .filter((attackingType) => typeEffectiveness(attackingType, defendingTypes) > 1)
@@ -485,11 +576,79 @@ function intersectCandidates(current, names) {
 }
 
 function normalizeName(value) {
-  return value.trim().toLowerCase().replace(/\s+/g, "-");
+  return normalizeSearchText(value).replace(/\s+/g, "-");
 }
 
 function formatName(value) {
   return value.replaceAll("-", " ");
+}
+
+function normalizeSearchText(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[()]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function toApiName(value, category) {
+  const normalized = normalizeSearchText(value).replace(/\s+/g, "-");
+  if (!normalized) return "";
+
+  const direct = buildReverseTranslations(category)[normalized];
+  return direct || normalized;
+}
+
+function buildReverseTranslations(category) {
+  const cacheKey = `reverse_${category}`;
+  if (!buildReverseTranslations[cacheKey]) {
+    buildReverseTranslations[cacheKey] = Object.fromEntries(
+      Object.entries(TRANSLATIONS[category] || {}).map(([apiName, label]) => [
+        normalizeSearchText(label).replace(/\s+/g, "-"),
+        apiName,
+      ]),
+    );
+  }
+  return buildReverseTranslations[cacheKey];
+}
+
+function datalistOptions(name, category) {
+  const label = translatedStrict(category, name);
+  return label ? [label] : [];
+}
+
+function pokemonDisplayName(pokemon) {
+  return pokemon.displayName || TRANSLATIONS.pokemon[pokemon.name] || formatName(pokemon.name);
+}
+
+function moveName(name) {
+  return translatedStrict("moves", name) || "Movimiento sin traducción";
+}
+
+function abilityName(name) {
+  return translatedStrict("abilities", name) || "Habilidad sin traducción";
+}
+
+function typeName(name) {
+  return translatedStrict("types", name) || "Tipo";
+}
+
+function translated(category, name) {
+  return TRANSLATIONS[category]?.[name] || formatName(name);
+}
+
+function translatedStrict(category, name) {
+  return TRANSLATIONS[category]?.[name] || "";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function setLoading(isLoading, title, text) {
@@ -498,8 +657,28 @@ function setLoading(isLoading, title, text) {
   statusText.textContent = text;
 }
 
+function setSourceMode(label) {
+  sourcePill.textContent = label;
+}
+
 function renderEmpty(message) {
   results.innerHTML = `<div class="empty-state">${message}</div>`;
+}
+
+function switchWorkspace(windowName) {
+  workspaceTabs.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.window === windowName);
+  });
+
+  if (windowName === "finder") {
+    setLoading(false, "Pokédex local lista", "No necesita PokeAPI: usa datos, traducciones e imágenes locales.");
+    renderEmpty("Busca por ejemplo intimidacion + terremoto, electrico + rayo o danza dragon.");
+    return;
+  }
+
+  setLoading(false, "", "");
+  results.innerHTML = "";
+  summaryCount.textContent = "0";
 }
 
 function checkSecretPhrase(value) {
@@ -538,7 +717,7 @@ function activateSecret(secret) {
   const actions = {
     konami: () => {
       document.body.classList.add("obsidian-takeover");
-      showToast("Obsidian Studios ha tomado el control de la Pokedex.", "Konami Code");
+      showToast("Obsidian Studios ha tomado el control de la Pokédex.", "Konami Code");
       window.setTimeout(() => document.body.classList.remove("obsidian-takeover"), 6500);
     },
     obsidian: () => {
@@ -546,13 +725,13 @@ function activateSecret(secret) {
       renderSecretPokemon();
     },
     "obsidian-studios": () => {
-      showToast("Pokedex experimental de Obsidian Studios activada.", "Obsidian Dex");
+      showToast("Pokédex experimental de Obsidian Studios activada.", "Obsidian Dex");
       document.body.classList.add("obsidian-takeover");
       window.setTimeout(() => document.body.classList.remove("obsidian-takeover"), 6500);
     },
     pizzha: () => {
       const lines = [
-        "Pokemon favorito: cualquiera que sobreviva al primer gimnasio.",
+        "Pokémon favorito: cualquiera que sobreviva al primer gimnasio.",
         "Error 404: El ingeniero esta ocupado usando Create.",
       ];
       showToast(lines[Math.floor(Math.random() * lines.length)], "Pizzha");
@@ -577,7 +756,7 @@ function activateSecret(secret) {
       showQuizToast();
     },
     agmez: () => {
-      showToast("Todos los Pokemon reciben temporalmente un Omnitrix.", "Agmez");
+      showToast("Todos los Pokémon reciben temporalmente un Omnitrix.", "Agmez");
       temporaryBodyClass("omnitrix-mode", 7000);
     },
     shiny: () => {
@@ -589,7 +768,7 @@ function activateSecret(secret) {
       renderMissingNo();
     },
     masterball: () => {
-      showToast("Captura garantizada: se muestran todos los Pokemon locales.", "Master Ball");
+      showToast("Captura garantizada: se muestran todos los Pokémon locales.", "Master Ball");
       renderResults(window.LOCAL_POKEMON, { moves: [] });
       summaryCount.textContent = String(window.LOCAL_POKEMON.length);
     },
@@ -641,7 +820,7 @@ function renderSecretPokemon() {
   const chosen = secret[Math.floor(Math.random() * secret.length)] || window.LOCAL_POKEMON[0];
   renderResults([chosen], { moves: [] });
   summaryCount.textContent = "1";
-  setLoading(false, "Pokemon de Obsidian encontrado", "Tipo Roca/Siniestro detectado en el laboratorio.");
+  setLoading(false, "Pokémon de Obsidian encontrado", "Tipo Roca/Siniestro detectado en el laboratorio.");
 }
 
 function renderMissingNo() {
@@ -670,18 +849,18 @@ function renderMissingNo() {
     </article>
   `;
   summaryCount.textContent = "?";
-  setLoading(false, "Error imposible", "La Pokedex encontro algo que no deberia existir.");
+  setLoading(false, "Error imposible", "La Pokédex encontró algo que no debería existir.");
 }
 
 function friendlyError(error) {
   const message = `${error.name || ""} ${error.message || error}`;
   if (message.includes("AbortError")) {
-    return "PokeAPI tardo demasiado en responder.";
+    return "PokeAPI tardó demasiado en responder.";
   }
   if (message.includes("Failed to fetch")) {
-    return "No hay conexion con PokeAPI en este momento.";
+    return "No hay conexión con PokeAPI en este momento.";
   }
-  return error.message || "Ocurrio un error inesperado.";
+  return error.message || "Ocurrió un error inesperado.";
 }
 
 function clearOldCache() {

@@ -3,19 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Localizador Pokemon</title>
-    <link rel="preconnect" href="https://raw.githubusercontent.com" />
+    <title>Localizador Pokémon</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
+      <div class="workspace-tabs" aria-label="Ventanas de la Pokedex">
+        <button class="workspace-tab active" type="button" data-window="finder">
+          <span class="workspace-dot"></span>
+          Localizador
+        </button>
+        <button class="workspace-tab" type="button" data-window="team">Equipo</button>
+        <button class="workspace-tab" type="button" data-window="compare">Comparador</button>
+        <button class="workspace-tab add-workspace-tab" type="button" data-window="future" title="Proxima ventana">
+          +
+        </button>
+      </div>
       <section class="hero">
         <div>
-          <p class="eyebrow">Pokedex de equipo</p>
-          <h1>Localizador Pokemon</h1>
+          <p class="eyebrow">Pokédex de equipo</p>
+          <h1>Localizador Pokémon</h1>
           <p class="intro">
             Filtra por movimientos, habilidad, tipo, estadisticas y debilidades
-            para encontrar Pokemon que encajen con tu equipo.
+            para encontrar Pokémon que encajen con tu equipo.
           </p>
         </div>
         <div class="hero-panel" aria-label="Resumen de filtros activos">
@@ -27,6 +37,48 @@
 
       <section class="search-layout">
         <form id="finder-form" class="filters">
+          <div class="format-tabs" aria-label="Filtros de formato">
+            <label>
+              Juego
+              <select id="game-filter">
+                <option value="">Todos</option>
+                <option value="gen-1">Rojo / Azul / Amarillo</option>
+                <option value="gen-2">Oro / Plata / Cristal</option>
+                <option value="gen-3">Rubi / Zafiro / Esmeralda</option>
+                <option value="gen-4">Diamante / Perla / Platino</option>
+                <option value="gen-5">Blanco / Negro</option>
+                <option value="gen-6">X / Y</option>
+                <option value="gen-7">Sol / Luna</option>
+                <option value="gen-8">Espada / Escudo</option>
+                <option value="gen-9">Escarlata / Purpura</option>
+              </select>
+            </label>
+            <label>
+              Generacion
+              <select id="generation-filter">
+                <option value="">Todas</option>
+                <option value="gen-1">Gen 1</option>
+                <option value="gen-2">Gen 2</option>
+                <option value="gen-3">Gen 3</option>
+                <option value="gen-4">Gen 4</option>
+                <option value="gen-5">Gen 5</option>
+                <option value="gen-6">Gen 6</option>
+                <option value="gen-7">Gen 7</option>
+                <option value="gen-8">Gen 8</option>
+                <option value="gen-9">Gen 9</option>
+              </select>
+            </label>
+            <label>
+              Regulacion
+              <select id="regulation-filter">
+                <option value="">Todas</option>
+                <option value="national">Pokedex nacional</option>
+                <option value="mainline">Solo formas principales</option>
+                <option value="no-special">Sin formas especiales</option>
+              </select>
+            </label>
+          </div>
+
           <div class="filter-group">
             <div class="group-header">
               <h2>Movimientos</h2>
@@ -37,7 +89,7 @@
             <div class="move-grid">
               <label>
                 Ataque 1
-                <input list="move-options" name="move" placeholder="ej: thunderbolt" autocomplete="off" />
+                <input list="move-options" name="move" placeholder="ej: rayo" autocomplete="off" />
               </label>
               <label>
                 Ataque 2
@@ -57,7 +109,7 @@
           <div class="filter-row">
             <label>
               Habilidad
-              <input list="ability-options" id="ability-input" placeholder="ej: intimidate" autocomplete="off" />
+              <input list="ability-options" id="ability-input" placeholder="ej: intimidacion" autocomplete="off" />
             </label>
             <label>
               Tipo
@@ -66,7 +118,7 @@
               </select>
             </label>
             <label>
-              Debil a
+              Débil a
               <select id="weakness-filter">
                 <option value="">Cualquier debilidad</option>
               </select>
@@ -75,7 +127,7 @@
 
           <div class="filter-group">
             <div class="group-header">
-              <h2>Stats minimos</h2>
+              <h2>Stats mínimos</h2>
               <button class="icon-button" type="button" id="clear-stats" title="Limpiar stats">
                 x
               </button>
@@ -102,7 +154,10 @@
               <strong id="status-title">Listo para buscar</strong>
               <p id="status-text">Escribe uno o varios filtros y pulsa buscar.</p>
             </div>
-            <div class="loader" id="loader" hidden></div>
+            <div class="status-tools">
+              <span class="source-pill" id="source-pill">Local</span>
+              <div class="loader" id="loader" hidden></div>
+            </div>
           </div>
           <div id="results" class="results-grid"></div>
         </section>

@@ -75,6 +75,53 @@ select {
   z-index: 1;
 }
 
+.workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding-left: 8px;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 3px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: #fff9df;
+  color: var(--line);
+  padding: 0 12px;
+  box-shadow: 0 5px 0 rgba(20, 33, 61, 0.14);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.workspace-tab.active {
+  background: #ffcb05;
+  color: #14213d;
+  border-bottom-color: #ffcb05;
+}
+
+.workspace-tab:hover {
+  transform: translateY(-1px);
+}
+
+.add-workspace-tab {
+  width: 36px;
+  justify-content: center;
+  padding: 0;
+}
+
+.workspace-dot {
+  width: 11px;
+  aspect-ratio: 1;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--accent-3);
@@ -169,6 +216,11 @@ h2 {
   align-items: start;
 }
 
+.results-area {
+  display: grid;
+  gap: 14px;
+}
+
 .filters,
 .status-bar,
 .pokemon-card {
@@ -183,6 +235,34 @@ h2 {
   top: 18px;
   padding: 18px;
   background: linear-gradient(#fff9df, #fff1be);
+}
+
+.format-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: -4px -4px 18px;
+  border: 3px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(227, 53, 53, 0.12), rgba(36, 104, 178, 0.12)),
+    #ffffff;
+  padding: 10px;
+}
+
+.format-tabs label {
+  gap: 5px;
+  min-width: 0;
+  font-size: 0.7rem;
+}
+
+.format-tabs select {
+  min-height: 38px;
+  border-color: var(--line);
+  background: #f7fbff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 7px 6px;
 }
 
 .filter-group + .filter-group,
@@ -282,6 +362,27 @@ button {
   background: #e9f5ff;
 }
 
+.status-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.source-pill {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: #b8ffcf;
+  color: #053f26;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .status-bar p {
   margin: 4px 0 0;
   color: var(--muted);
@@ -360,6 +461,13 @@ button {
   text-transform: capitalize;
 }
 
+.pokemon-genus {
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .dex-number {
   color: var(--accent);
   font-size: 0.82rem;
@@ -398,10 +506,53 @@ button {
   color: #7d5100;
 }
 
+.badge.rare {
+  border-color: #8f1024;
+  background: #ffe1e6;
+  color: #8f1024;
+}
+
 .card-body {
   display: grid;
   gap: 14px;
   padding: 16px;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meta-grid span {
+  display: grid;
+  min-height: 52px;
+  align-content: center;
+  border: 2px solid #c4d1e8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--line);
+  padding: 8px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.meta-grid strong {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.flavor-text {
+  margin: 0;
+  border-left: 4px solid var(--accent-3);
+  color: #31415f;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.45;
+  padding-left: 10px;
 }
 
 .info-block strong {
@@ -647,9 +798,11 @@ button {
   }
 
   .move-grid,
+  .format-tabs,
   .stats-grid,
   .actions,
-  .card-top {
+  .card-top,
+  .meta-grid {
     grid-template-columns: 1fr;
   }
 
